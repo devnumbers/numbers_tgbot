@@ -107,12 +107,7 @@ func handleBotCommand(message *tgbotapi.Message) {
 	switch message.Command() {
 	case "start":
 		msg.Text = "Привет! Я готов принимать ваши заявки."
-	case "sayhi":
-		msg.Text = "Привет :)"
-	case "status":
-		msg.Text = "У меня все хорошо."
-	case "help":
-		msg.Text = "Я понимаю команды /start, /sayhi, /status, и /help."
+
 	default:
 		msg.Text = "Извините, я не знаю такую команду."
 	}
