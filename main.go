@@ -41,7 +41,7 @@ func main() {
 	mux.HandleFunc("/tgbot/add", handleApplication)
 
 	handler := cors.New(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:5173"},
+		AllowedOrigins:   []string{"https://numbers-agency.ru/"},
 		AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
 		AllowedHeaders:   []string{"Content-Type", "Authorization"},
 		AllowCredentials: true,
@@ -78,7 +78,7 @@ func handleApplication(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	message := fmt.Sprintf("Новая заявка:\nНазвание: %s\nИмя: %s\nТелефон: %s\nКомпания: %s\nПочта: %s\nОписание: %s",
+	message := fmt.Sprintf("Новая заявка\n\nТип: %s\nИмя: %s\nТелефон: %s\nКомпания: %s\nПочта: %s\nОписание: %s",
 		app.Title, app.Data.Name, app.Data.Phone, app.Data.Company, app.Data.Email, app.Data.Description)
 
 	mu.Lock()
