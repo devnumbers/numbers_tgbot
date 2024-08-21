@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"sync"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/rs/cors"
@@ -23,7 +24,8 @@ type Application struct {
 }
 
 var bot *tgbotapi.BotAPI
-var chatID int64
+var chatIDs = make(map[int64]bool)
+var mu sync.Mutex
 
 func main() {
 	var err error
@@ -35,11 +37,9 @@ func main() {
 	bot.Debug = true
 	log.Printf("Authorized on account %s", bot.Self.UserName)
 
-	// Настройка роутов для сервера
 	mux := http.NewServeMux()
 	mux.HandleFunc("/tgbot/add", handleApplication)
 
-	// Настройка CORS
 	handler := cors.New(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:5173"},
 		AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
@@ -52,7 +52,6 @@ func main() {
 		log.Fatal(http.ListenAndServe(":3000", handler))
 	}()
 
-	// Обработка команд бота
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 	updates := bot.GetUpdatesChan(u)
@@ -64,7 +63,6 @@ func main() {
 	}
 }
 
-// Обработка заявок с формы
 func handleApplication(w http.ResponseWriter, r *http.Request) {
 	var app Application
 
@@ -83,14 +81,15 @@ func handleApplication(w http.ResponseWriter, r *http.Request) {
 	message := fmt.Sprintf("Новая заявка:\nНазвание: %s\nИмя: %s\nТелефон: %s\nКомпания: %s\nПочта: %s\nОписание: %s",
 		app.Title, app.Data.Name, app.Data.Phone, app.Data.Company, app.Data.Email, app.Data.Description)
 
-	msg := tgbotapi.NewMessage(chatID, message)
-	if _, err := bot.Send(msg); err != nil {
-		log.Println("Не удалось отправить сообщение в Telegram:", err)
-		http.Error(w, "Не удалось отправить сообщение в Telegram", http.StatusInternalServerError)
-		return
+	mu.Lock()
+	for chatID := range chatIDs {
+		msg := tgbotapi.NewMessage(chatID, message)
+		if _, err := bot.Send(msg); err != nil {
+			log.Printf("Не удалось отправить сообщение в Telegram для chatID %d: %v", chatID, err)
+		}
 	}
+	mu.Unlock()
 
-	// Возвращаем JSON-ответ после успешной отправки заявки
 	response := map[string]string{"message": "Заявка успешно отправлена в Telegram"}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -98,13 +97,15 @@ func handleApplication(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-// Обработка команд бота
 func handleBotCommand(message *tgbotapi.Message) {
+	mu.Lock()
+	chatIDs[message.Chat.ID] = true
+	mu.Unlock()
+
 	msg := tgbotapi.NewMessage(message.Chat.ID, "")
 
 	switch message.Command() {
 	case "start":
-		chatID = message.Chat.ID
 		msg.Text = "Привет! Я готов принимать ваши заявки."
 	case "sayhi":
 		msg.Text = "Привет :)"
