@@ -1,4 +1,4 @@
-FROM golang:1.21-alpine AS builder
+FROM golang:1.22-alpine AS builder
 
 WORKDIR /app
 COPY go.mod go.sum ./
@@ -13,5 +13,4 @@ WORKDIR /app
 COPY --from=builder /app/tg-bot .
 
 EXPOSE 3002
-
 CMD ["./tg-bot"]
